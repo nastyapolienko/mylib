@@ -102,6 +102,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		tokenString,
 	})
 	fmt.Fprintf(w, string(b))
+	print("lala")
 
 }
 
