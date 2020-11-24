@@ -116,6 +116,7 @@ func updateBook(w http.ResponseWriter, r *http.Request) {
 func createBook(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	stmt, err := db.Prepare("INSERT INTO books(bookname, year, uid) VALUES(?,?,?)")
+	//check uid
 	if err != nil {
 	  panic(err.Error())
 	}
@@ -144,8 +145,12 @@ func createBook(w http.ResponseWriter, r *http.Request) {
 	  panic(err.Error())
 	}
 	_, err = stmt.Exec(params["Id"])
+	bid, _ := strconv.Atoi(params["Id"])
     if err != nil {
 	  panic(err.Error())
+	}
+	if !ensureBookBelongsToUser(bid, getUserId(r)) {
+		return
 	}
   fmt.Fprintf(w, "Book with Id = %s was deleted", params["Id"])
   }
@@ -179,6 +184,7 @@ func deleteUser(w http.ResponseWriter, r *http.Request) {
 	  panic(err.Error())
 	}
 	_, err = stmt.Exec(params["Uid"])
+	//check uid
    if err != nil {
 	  panic(err.Error())
 	}
