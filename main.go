@@ -9,6 +9,7 @@ import(
 	_"github.com/go-sql-driver/mysql" 
 	"github.com/gorilla/mux"
 	"io/ioutil"
+	"strconv"
 )
 
 const(
@@ -98,9 +99,16 @@ func updateBook(w http.ResponseWriter, r *http.Request) {
 	newName := keyVal["bookname"]
 	newYear := keyVal["year"]
 	_, err = stmt.Exec(newName, newYear, params["Id"])
+	bid, _ := strconv.Atoi(params["Id"])
+
 	if err != nil {
 	  panic(err.Error())
 	}
+
+	if !ensureBookBelongsToUser(bid, getUserId(r)) {
+		return
+	}
+
 	log.Print("The book was updated")
 	fmt.Fprintf(w, "Book with Id = %s was updated", params["Id"])
 }
@@ -241,11 +249,11 @@ func main(){
 	router := mux.NewRouter()
 	AddAuthHandlers(router)
 
-	//router.HandleFunc("/books", getBooks).Methods("GET")
-	router.HandleFunc("/books/{Id}", getBook).Methods("GET")
-	router.HandleFunc("/books", createBook).Methods("POST")
-	router.HandleFunc("/books/{Id}", updateBook).Methods("PUT")
-	router.HandleFunc("/books/{Id}", deleteBook).Methods("DELETE")
+	router.HandleFunc("/books", getBooks).Methods("GET")
+	router.HandleFunc("/books/{Id}", Middleware(getBook)).Methods("GET")
+	router.HandleFunc("/books", Middleware(createBook)).Methods("POST")
+	router.HandleFunc("/books/{Id}", Middleware(updateBook)).Methods("PUT")
+	router.HandleFunc("/books/{Id}", Middleware(deleteBook)).Methods("DELETE")
 	router.HandleFunc("/user/books/{uid}", Middleware(getUsBooks)).Methods("GET")
 	router.HandleFunc("/users", createUser).Methods("POST")
 	router.HandleFunc("/users", getUsers).Methods("GET")

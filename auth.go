@@ -102,8 +102,6 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		tokenString,
 	})
 	fmt.Fprintf(w, string(b))
-	print("lala")
-
 }
 
 // Middleware is a wrapper of handlers that needs to perform authentication
@@ -141,4 +139,12 @@ func Middleware(next http.HandlerFunc) http.HandlerFunc {
 			next.ServeHTTP(w, r.WithContext(ctx))
 		}
 	})
+}
+
+func getUserId(r *http.Request) int {
+	return r.Context().Value("props").(*Claims).ID
+}
+
+func ensureBookBelongsToUser(bid int, uid int) bool {
+	return true
 }
