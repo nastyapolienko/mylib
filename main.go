@@ -9,7 +9,6 @@ import(
 	_"github.com/go-sql-driver/mysql" 
 	"github.com/gorilla/mux"
 	"io/ioutil"
-	"strconv"
 )
 
 const(
@@ -69,24 +68,24 @@ func getBook(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	params := mux.Vars(r)
 	log.Print("reading a record from database")
-	result, err := db.Query("SELECT bid, bookname, year FROM books WHERE bid = ?", params["Id"])
+	result, err := db.Query("SELECT bid, bookname, year, status FROM books WHERE bid = ?", params["Id"])
 	if err != nil {
 	  panic(err.Error())
 	}
 	defer result.Close()
 	var book Book
 	for result.Next() {
-	  err := result.Scan(&book.Id, &book.Name, &book.Year)
-	  if err != nil {
-		panic(err.Error())
-	  }
+		err := result.Scan(&book.Id, &book.Name, &book.Year, &book.Status)
+		if err != nil {
+			panic(err.Error())
+	  	}
 	}
 	json.NewEncoder(w).Encode(book)
 }
 
 func updateBook(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
-	stmt, err := db.Prepare("UPDATE books SET bookname = ?, year = ? WHERE bid = ?")
+	stmt, err := db.Prepare("UPDATE books SET bookname = ?, year = ?, status = ? WHERE bid = ?")
 	if err != nil {
 	  panic(err.Error())
 	}
@@ -98,16 +97,17 @@ func updateBook(w http.ResponseWriter, r *http.Request) {
 	json.Unmarshal(body, &keyVal)
 	newName := keyVal["bookname"]
 	newYear := keyVal["year"]
-	_, err = stmt.Exec(newName, newYear, params["Id"])
-	bid, _ := strconv.Atoi(params["Id"])
+	newStatus := keyVal["status"]
+	_, err = stmt.Exec(newName, newYear, newStatus, params["Id"])
+	//bid, _ := strconv.Atoi(params["Id"])
 
 	if err != nil {
 	  panic(err.Error())
 	}
 
-	if !ensureBookBelongsToUser(bid, getUserId(r)) {
-		return
-	}
+	// if !ensureBookBelongsToUser(bid, getUserId(r)) {
+	// 	return
+	// }
 
 	log.Print("The book was updated")
 	fmt.Fprintf(w, "Book with Id = %s was updated", params["Id"])
@@ -145,13 +145,13 @@ func createBook(w http.ResponseWriter, r *http.Request) {
 	  panic(err.Error())
 	}
 	_, err = stmt.Exec(params["Id"])
-	bid, _ := strconv.Atoi(params["Id"])
+	//bid, _ := strconv.Atoi(params["Id"])
     if err != nil {
 	  panic(err.Error())
 	}
-	if !ensureBookBelongsToUser(bid, getUserId(r)) {
-		return
-	}
+	// if !ensureBookBelongsToUser(bid, getUserId(r)) {
+	// 	return
+	// }
   fmt.Fprintf(w, "Book with Id = %s was deleted", params["Id"])
   }
 
@@ -250,12 +250,38 @@ func getUser(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(user)
 }
 
+func checkHash(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	params := mux.Vars(r)
+	result, err := db.Query("SELECT pass FROM users WHERE email = ?", params["email"])
+	if err != nil {
+	  panic(err.Error())
+	}
+	defer result.Close()
+	var hashc string
+	for result.Next(){
+		err := result.Scan(&user.Pass)
+		if err != nil {
+			panic(err.Error())
+	  	}
+	}
+	b, err := json.Marshal(struct {
+		Hash string `json:"hash"`
+	}{
+		hashc,
+	})
+	fmt.Fprintf(w, string(b))
+	// hashc = user.Pass
+	// println("im here!!!!!", hashc)
+	//json.NewEncoder(w).Encode(hashc)
+}
 
 func main(){
 	router := mux.NewRouter()
 	AddAuthHandlers(router)
 
 	router.HandleFunc("/books", getBooks).Methods("GET")
+	router.HandleFunc("/hash/{email}", checkHash).Methods("GET")
 	router.HandleFunc("/books/{Id}", Middleware(getBook)).Methods("GET")
 	router.HandleFunc("/books", Middleware(createBook)).Methods("POST")
 	router.HandleFunc("/books/{Id}", Middleware(updateBook)).Methods("PUT")

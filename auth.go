@@ -51,7 +51,6 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-
 	//only one tenant per uzer
 	err = db.QueryRow(`SELECT uid, email
 						FROM users
@@ -133,18 +132,8 @@ func Middleware(next http.HandlerFunc) http.HandlerFunc {
 			}
 
 			ctx := context.WithValue(r.Context(), props, claims)
-			// Access context values in handlers like this
-			// claims, _ := r.Context().Value("props").(*Claims)
-			// fmt.Println(claims)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		}
 	})
 }
 
-func getUserId(r *http.Request) int {
-	return r.Context().Value("props").(*Claims).ID
-}
-
-func ensureBookBelongsToUser(bid int, uid int) bool {
-	return true
-}
